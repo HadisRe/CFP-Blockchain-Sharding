@@ -2,7 +2,6 @@
 CFP Scientific Evaluation Module
 Uses REAL classes from phases 1-7 to measure paper metrics.
 
-NO fake data. All results come from actual simulation.
 """
 
 import time
