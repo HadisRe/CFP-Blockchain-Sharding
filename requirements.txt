@@ -13,5 +13,3 @@ cryptography>=3.4.0
 networkx>=2.6.0
 python-louvain>=0.16
 
-# Optional: for faster computation
-scipy>=1.7.0
