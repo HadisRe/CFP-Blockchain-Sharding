@@ -1,0 +1,17 @@
+# CFP-Blockchain-Sharding Requirements
+# Python 3.8+ recommended
+
+# Core dependencies
+numpy>=1.21.0
+matplotlib>=3.5.0
+
+# Cryptography for ECDSA signatures and VRF
+ecdsa>=0.18.0
+cryptography>=3.4.0
+
+# Graph partitioning (Louvain algorithm)
+networkx>=2.6.0
+python-louvain>=0.16
+
+# Optional: for faster computation
+scipy>=1.7.0
