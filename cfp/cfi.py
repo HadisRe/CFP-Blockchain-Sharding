@@ -5,35 +5,21 @@ Measures voting diversity to detect predictable behavior.
 Based on paper equation (15):
 CFI(T) = 1 - (1/n) * sum((streak_v / T)^2)
 
-High CFI = diverse voting (good)
-Low CFI = predictable voting (bad, possible attack)
 """
 
 
 class ConsensusFrictionIndex:
-    """
-    Calculates and monitors CFI for shards.
-    When CFI drops below threshold, increases rotation rate.
-    """
+    
     
     def __init__(self, fluidity_manager, threshold=0.5, window=10):
-        """
-        Setup CFI monitor.
-        
-        fluidity_manager: the ValidatorFluidity object to adjust
-        threshold: CFI below this triggers response
-        window: how many blocks to look at (T in paper)
-        """
+       
         self.fluidity = fluidity_manager
         self.threshold = threshold
         self.window = window
         self.cfi_history = {}  # track CFI per shard over time
     
     def calculate_streak(self, votes):
-        """
-        Find longest consecutive same votes.
-        Example: [T,T,T,F,F,T] -> streak is 3 (the three T's)
-        """
+       
         if not votes:
             return 0
         
@@ -85,10 +71,7 @@ class ConsensusFrictionIndex:
         return cfi
     
     def check_shard(self, shard):
-        """
-        Check CFI for a shard and respond if needed.
-        Returns CFI value and whether action was taken.
-        """
+       
         cfi = self.calculate_cfi(shard)
         
         # record history
@@ -131,10 +114,7 @@ class ConsensusFrictionIndex:
         return total / count if count > 0 else 1.0
     
     def simulate_voting_round(self, network, adversarial_coordination=False):
-        """
-        Simulate validators casting votes.
-        If adversarial_coordination=True, adversarial validators vote same way.
-        """
+        
         block_hash = f"block_{len(self.cfi_history)}"
         
         for shard in network.shards.values():
