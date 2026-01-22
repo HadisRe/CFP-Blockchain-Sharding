@@ -62,8 +62,7 @@ python -m evaluation.publication_evaluation
 ```
 
 **Output:**
-- `publication_plots/` - Visualization files (PDF/PNG)
-- `publication_tables/` - LaTeX tables
+- `publication_plots/` - Visualization files 
 
 ## License
 
