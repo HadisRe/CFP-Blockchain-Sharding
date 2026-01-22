@@ -292,7 +292,6 @@ class PublicationEvaluator:
         self._plot_capture_timeline()
         self._plot_attack_shield()
         self._plot_performance_gauge()
-        self._plot_comparison_infographic()
         
         print(f"\nAll plots saved to: {PLOT_DIR}/")
     
@@ -364,7 +363,7 @@ class PublicationEvaluator:
             bar = ax.bar(i, cap, width, color=color, edgecolor='black', linewidth=2)
             
             # Add shard icon on top
-            ax.text(i, cap + 3, f'  × {shards}', ha='center', fontsize=14)
+            ax.text(i, cap + 3, f' × {shards}', ha='center', fontsize=14)
             ax.text(i, -8, f'{val} validators\nper shard', ha='center', fontsize=10, 
                    style='italic', color='gray')
         
@@ -584,73 +583,9 @@ class PublicationEvaluator:
         plt.close()
         print("  Saved: 05_performance_gauge")
     
-    def _plot_comparison_infographic(self):
-        """Infographic comparing Static vs CFP."""
-        if "duration" not in self.results or "shards" not in self.results:
-            return
-        
-        fig, ax = plt.subplots(figsize=(16, 10))
-        
-        # Background
-        ax.set_xlim(0, 16)
-        ax.set_ylim(0, 10)
-        
-        # Left side: Static System
-        left_box = FancyBboxPatch((0.5, 1), 7, 8, boxstyle="round,pad=0.1",
-                                   facecolor='#fadbd8', edgecolor='#e74c3c', linewidth=3)
-        ax.add_patch(left_box)
-        
-        ax.text(4, 8.5, 'Static System', ha='center', fontsize=20, fontweight='bold', color='#c0392b')
-        ax.text(4, 7.5, '(No Rotation)', ha='center', fontsize=14, color='#7f8c8d')
-        
-        ax.text(4, 6.3, '  Permanent Capture', ha='center', fontsize=14, color='#e74c3c')
-        ax.text(4, 5.5, '  No Attack Detection', ha='center', fontsize=14, color='#e74c3c')
-        ax.text(4, 4.7, '  Fixed Committees', ha='center', fontsize=14, color='#e74c3c')
-        
-        ax.text(4, 3.2, f'Capture Duration:', ha='center', fontsize=12, fontweight='bold')
-        ax.text(4, 2.5, f'{self.results["duration"]["static_avg"]:.0f} blocks', 
-               ha='center', fontsize=24, fontweight='bold', color='#c0392b')
-        
-        # Right side: CFP System
-        right_box = FancyBboxPatch((8.5, 1), 7, 8, boxstyle="round,pad=0.1",
-                                    facecolor='#d5f5e3', edgecolor='#27ae60', linewidth=3)
-        ax.add_patch(right_box)
-        
-        ax.text(12, 8.5, 'CFP System', ha='center', fontsize=20, fontweight='bold', color='#1e8449')
-        ax.text(12, 7.5, '(With Rotation)', ha='center', fontsize=14, color='#7f8c8d')
-        
-        ax.text(12, 6.3, '✓ Transient Capture Only', ha='center', fontsize=14, color='#27ae60')
-        ax.text(12, 5.5, '✓ CFI Attack Detection', ha='center', fontsize=14, color='#27ae60')
-        ax.text(12, 4.7, '✓ Dynamic Committees', ha='center', fontsize=14, color='#27ae60')
-        
-        ax.text(12, 3.2, f'Capture Duration:', ha='center', fontsize=12, fontweight='bold')
-        ax.text(12, 2.5, f'{self.results["duration"]["cfp_avg"]:.0f} blocks', 
-               ha='center', fontsize=24, fontweight='bold', color='#1e8449')
-        
-        # Center: Improvement
-        center_box = FancyBboxPatch((6.5, 3.5), 3, 3, boxstyle="round,pad=0.1",
-                                     facecolor='#f9e79f', edgecolor='#f1c40f', linewidth=3)
-        ax.add_patch(center_box)
-        
-        ax.text(8, 5.8, 'Improvement', ha='center', fontsize=14, fontweight='bold', color='#9a7d0a')
-        ax.text(8, 4.5, f'{self.results["duration"]["improvement"]:.0f}%', 
-               ha='center', fontsize=32, fontweight='bold', color='#b7950b')
-        
-        # Arrows
-        ax.annotate('', xy=(6.5, 5), xytext=(5.5, 5),
-                   arrowprops=dict(arrowstyle='->', color='#2c3e50', lw=2))
-        ax.annotate('', xy=(10.5, 5), xytext=(9.5, 5),
-                   arrowprops=dict(arrowstyle='->', color='#2c3e50', lw=2))
-        
-        ax.axis('off')
-        ax.set_title('Static vs CFP: Security Comparison', fontsize=22, fontweight='bold', pad=20)
-        
-        plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/06_comparison_infographic.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        print("  Saved: 06_comparison_infographic")
-    
- 
+    # ===========================================
+    # MAIN
+    # ===========================================
     
     def run(self):
         """Run complete evaluation."""
@@ -666,4 +601,3 @@ class PublicationEvaluator:
 if __name__ == "__main__":
     evaluator = PublicationEvaluator()
     evaluator.run()
-
