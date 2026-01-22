@@ -3,10 +3,6 @@ Account Partitioning module for CFP simulation.
 Groups frequently-interacting accounts into same shard.
 
 Uses Louvain algorithm for community detection.
-Reference: Blondel et al., "Fast unfolding of communities in large networks", 2008
-
-From paper section 4.8: minimize cross-shard transactions
-by clustering accounts based on interaction patterns.
 """
 
 import random
@@ -15,10 +11,7 @@ import math
 
 
 class InteractionGraph:
-    """
-    Graph of account interactions.
-    Edges weighted by transaction frequency.
-    """
+     
 
     def __init__(self):
         self.edges = defaultdict(lambda: defaultdict(float))
@@ -26,8 +19,7 @@ class InteractionGraph:
         self.total_weight = 0
 
     def add_interaction(self, account1, account2, weight=1):
-        """Record interaction between two accounts."""
-        if account1 == account2:
+         if account1 == account2:
             return
 
         self.edges[account1][account2] += weight
@@ -37,78 +29,47 @@ class InteractionGraph:
         self.total_weight += weight
 
     def get_interaction_weight(self, account1, account2):
-        """Get interaction weight between two accounts."""
-        return self.edges[account1].get(account2, 0)
+         return self.edges[account1].get(account2, 0)
 
     def get_neighbors(self, account):
-        """Get all accounts that interacted with this one."""
-        return list(self.edges[account].keys())
+         return list(self.edges[account].keys())
 
     def get_degree(self, account):
-        """Get sum of all edge weights for an account."""
-        return sum(self.edges[account].values())
+         return sum(self.edges[account].values())
 
     def get_edge_weight_sum(self):
-        """Get total weight of all edges (m in Louvain)."""
-        return self.total_weight
+         return self.total_weight
 
 
 class LouvainClustering:
-    """
-    Louvain algorithm for community detection.
-
-    Optimizes modularity: Q = (1/2m) * sum[(A_ij - k_i*k_j/2m) * delta(c_i, c_j)]
-
-    where:
-    - m = total edge weight
-    - A_ij = edge weight between i and j
-    - k_i = degree of node i
-    - c_i = community of node i
-    - delta = 1 if same community, 0 otherwise
-    """
+   
 
     def __init__(self, graph, target_clusters=None):
-        """
-        Initialize Louvain clustering.
-
-        graph: InteractionGraph object
-        target_clusters: desired number of clusters (shards)
-        """
+         
         self.graph = graph
         self.target_clusters = target_clusters
         self.communities = {}  # node -> community_id
         self.community_members = defaultdict(set)  # community_id -> set of nodes
 
     def initialize_communities(self):
-        """Start with each node in its own community."""
-        for i, node in enumerate(self.graph.accounts):
+         for i, node in enumerate(self.graph.accounts):
             self.communities[node] = i
             self.community_members[i].add(node)
 
     def get_community_degree(self, community_id):
-        """Get sum of degrees for all nodes in community."""
-        total = 0
+         total = 0
         for node in self.community_members[community_id]:
             total += self.graph.get_degree(node)
         return total
 
     def get_edges_to_community(self, node, community_id):
-        """Get sum of edge weights from node to community."""
-        total = 0
+         total = 0
         for member in self.community_members[community_id]:
             total += self.graph.get_interaction_weight(node, member)
         return total
 
     def calculate_modularity_gain(self, node, new_community):
-        """
-        Calculate modularity gain from moving node to new_community.
-
-        Delta Q = [sum_in + k_i_in]/2m - [(sum_tot + k_i)/2m]^2
-                - [sum_in/2m - (sum_tot/2m)^2 - (k_i/2m)^2]
-
-        Simplified:
-        Delta Q = [k_i_in/m] - [k_i * sum_tot / (2m^2)]
-        """
+        
         m = self.graph.get_edge_weight_sum()
         if m == 0:
             return 0
@@ -125,8 +86,7 @@ class LouvainClustering:
         return delta_q
 
     def move_node(self, node, new_community):
-        """Move node to a new community."""
-        old_community = self.communities.get(node)
+         old_community = self.communities.get(node)
 
         if old_community is not None:
             self.community_members[old_community].discard(node)
@@ -138,10 +98,7 @@ class LouvainClustering:
         self.community_members[new_community].add(node)
 
     def phase_one(self):
-        """
-        First phase: local moving of nodes.
-        Move each node to community that maximizes modularity gain.
-        """
+       
         improved = True
         iterations = 0
         max_iterations = 100
@@ -179,10 +136,7 @@ class LouvainClustering:
         return iterations
 
     def merge_small_communities(self):
-        """
-        Merge communities to reach target number of clusters.
-        Merges smallest communities with their most connected neighbor.
-        """
+        
         if self.target_clusters is None:
             return
 
@@ -224,8 +178,7 @@ class LouvainClustering:
                 self.move_node(member, target)
 
     def reindex_communities(self):
-        """Reindex communities to be 0, 1, 2, ..., n-1"""
-        old_to_new = {}
+         old_to_new = {}
         new_id = 0
 
         for old_id in sorted(self.community_members.keys()):
@@ -246,10 +199,7 @@ class LouvainClustering:
         self.community_members = new_members
 
     def fit(self):
-        """
-        Run full Louvain algorithm.
-        Returns dict mapping node -> cluster_id
-        """
+       
         self.initialize_communities()
 
         # phase 1: optimize modularity
@@ -265,10 +215,7 @@ class LouvainClustering:
         return self.communities
 
     def get_modularity(self):
-        """
-        Calculate current modularity score.
-        Q = (1/2m) * sum[(A_ij - k_i*k_j/2m) * delta(c_i, c_j)]
-        """
+        
         m = self.graph.get_edge_weight_sum()
         if m == 0:
             return 0
@@ -291,10 +238,7 @@ class LouvainClustering:
 
 
 class AccountPartitioner:
-    """
-    Main partitioner that reorganizes accounts across shards.
-    Uses Louvain algorithm for optimal clustering.
-    """
+    
 
     def __init__(self, network):
         self.network = network
@@ -346,10 +290,7 @@ class AccountPartitioner:
         }
 
     def repartition(self):
-        """
-        Repartition accounts using Louvain algorithm.
-        Returns number of migrations.
-        """
+        "
         # run Louvain
         louvain = LouvainClustering(self.graph, target_clusters=self.network.num_shards)
         clusters = louvain.fit()
@@ -377,8 +318,7 @@ class AccountPartitioner:
         return migrations
 
     def migrate_account(self, account, from_shard, to_shard):
-        """Move account from one shard to another."""
-        if from_shard in self.network.shards:
+         if from_shard in self.network.shards:
             self.network.shards[from_shard].accounts.discard(account)
 
         if to_shard in self.network.shards:
@@ -387,8 +327,7 @@ class AccountPartitioner:
         self.network.account_to_shard[account] = to_shard
 
     def get_improvement(self, before_stats, after_stats):
-        """Calculate improvement in cross-shard ratio."""
-        before_ratio = before_stats["cross_ratio"]
+         before_ratio = before_stats["cross_ratio"]
         after_ratio = after_stats["cross_ratio"]
 
         if before_ratio == 0:
@@ -398,8 +337,7 @@ class AccountPartitioner:
         return improvement
 
     def get_modularity(self):
-        """Get current modularity score."""
-        louvain = LouvainClustering(self.graph, target_clusters=self.network.num_shards)
+         louvain = LouvainClustering(self.graph, target_clusters=self.network.num_shards)
 
         # set communities based on current shard assignment
         for account in self.graph.accounts:
@@ -411,8 +349,7 @@ class AccountPartitioner:
         return louvain.get_modularity()
 
     def print_analysis(self):
-        """Print current distribution analysis."""
-        stats = self.analyze_current_distribution()
+         stats = self.analyze_current_distribution()
 
         print(f"\nAccount Distribution Analysis:")
         print(f"  Total interactions: {stats['total']}")
