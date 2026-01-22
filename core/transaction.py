@@ -9,12 +9,7 @@ import uuid
 
 
 class Transaction:
-    """
-    Represents a single transaction in the blockchain.
     
-    A transaction transfers value from one account to another.
-    Each transaction has a unique identifier and timestamp.
-    """
     
     def __init__(self, sender, receiver, amount):
         """
@@ -32,22 +27,12 @@ class Transaction:
         self.tx_id = self.generate_tx_id()
     
     def generate_tx_id(self):
-        """
-        Generate a unique transaction ID based on transaction data.
-        
-        Returns:
-            A hexadecimal string representing the transaction hash
-        """
+       
         tx_content = f"{self.sender}{self.receiver}{self.amount}{self.timestamp}{uuid.uuid4()}"
         return hashlib.sha256(tx_content.encode()).hexdigest()
     
     def to_dict(self):
-        """
-        Convert transaction to dictionary format.
         
-        Returns:
-            Dictionary containing all transaction fields
-        """
         return {
             "tx_id": self.tx_id,
             "sender": self.sender,
@@ -57,23 +42,14 @@ class Transaction:
         }
     
     def __str__(self):
-        """Human readable representation of the transaction."""
-        return f"TX[{self.tx_id[:8]}...]: {self.sender} -> {self.receiver} : {self.amount}"
+         return f"TX[{self.tx_id[:8]}...]: {self.sender} -> {self.receiver} : {self.amount}"
     
     def __repr__(self):
         return self.__str__()
 
 
 def create_random_transaction(accounts):
-    """
-    Create a random transaction between two accounts.
-    
-    Args:
-        accounts: List of account addresses to choose from
-        
-    Returns:
-        A new Transaction object with random sender, receiver and amount
-    """
+   
     import random
     
     sender = random.choice(accounts)
