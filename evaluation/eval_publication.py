@@ -30,9 +30,7 @@ plt.rcParams['axes.linewidth'] = 1.5
 
 # Output directories
 PLOT_DIR = "publication_plots"
-TABLE_DIR = "publication_tables"
 os.makedirs(PLOT_DIR, exist_ok=True)
-os.makedirs(TABLE_DIR, exist_ok=True)
 
 
 class PublicationEvaluator:
@@ -226,27 +224,27 @@ class PublicationEvaluator:
         
         net = Network(num_shards=4, validators_per_shard=25, total_validators=200)
         coord = CrossShardCoordinator(net)
-
+        
         # Register accounts to different shards
         for i in range(200):
             net.register_account(f"acc_{i}", i % 4)
-
+        
         success, fail, latencies = 0, 0, []
         for i in range(50):
             src = f"acc_{i}"
             # Make sure dst is in a different shard
             dst_shard = (i % 4 + 1) % 4
             dst = f"acc_{dst_shard}"  # Account in different shard
-
+            
             start = time.perf_counter()
             tx, result = coord.process_transaction(src, dst, 10)
             latencies.append((time.perf_counter() - start) * 1000)
-
+            
             if tx is not None:
                 success += 1
             else:
                 fail += 1
-
+        
         total = success + fail
         self.results["cross_shard"] = {
             "success_rate": (success / total * 100) if total > 0 else 0,
@@ -340,7 +338,6 @@ class PublicationEvaluator:
         plt.title('Rotation Rate (ρ) Trade-off Analysis', size=16, fontweight='bold', pad=20)
         
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/01_rho_radar.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/01_rho_radar.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 01_rho_radar")
@@ -390,7 +387,6 @@ class PublicationEvaluator:
         ax.spines['right'].set_visible(False)
         
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/02_shard_security.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/02_shard_security.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 02_shard_security")
@@ -447,7 +443,6 @@ class PublicationEvaluator:
         ax.spines['left'].set_visible(False)
         
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/03_capture_timeline.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/03_capture_timeline.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 03_capture_timeline")
@@ -506,7 +501,6 @@ class PublicationEvaluator:
         ax.set_title('CFI-Based Attack Detection System', fontsize=16, fontweight='bold', pad=10)
         
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/04_attack_shield.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/04_attack_shield.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 04_attack_shield")
@@ -587,7 +581,6 @@ class PublicationEvaluator:
         
         plt.suptitle('System Performance Metrics', fontsize=18, fontweight='bold', y=1.02)
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/05_performance_gauge.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/05_performance_gauge.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 05_performance_gauge")
@@ -654,161 +647,20 @@ class PublicationEvaluator:
         ax.set_title('Static vs CFP: Security Comparison', fontsize=22, fontweight='bold', pad=20)
         
         plt.tight_layout()
-        plt.savefig(f"{PLOT_DIR}/06_comparison_infographic.pdf", dpi=300, bbox_inches='tight')
         plt.savefig(f"{PLOT_DIR}/06_comparison_infographic.png", dpi=300, bbox_inches='tight')
         plt.close()
         print("  Saved: 06_comparison_infographic")
     
-    # ===========================================
-    # LATEX TABLES
-    # ===========================================
-    
-    def generate_all_tables(self):
-        """Generate all LaTeX tables."""
-        print("\n" + "=" * 60)
-        print("GENERATING LATEX TABLES")
-        print("=" * 60)
-        
-        self._table_rho()
-        self._table_shards()
-        self._table_attacks()
-        self._table_summary()
-        
-        print(f"\nAll tables saved to: {TABLE_DIR}/")
-    
-    def _table_rho(self):
-        """LaTeX table for rho sensitivity."""
-        if "rho" not in self.results:
-            return
-        
-        data = self.results["rho"]
-        
-        latex = r"""\begin{table}[htbp]
-\centering
-\caption{Effect of Rotation Rate ($\rho$) on Security and Performance}
-\label{tab:rho_sensitivity}
-\begin{tabular}{|c|c|c|c|c|}
-\hline
-\textbf{$\rho$} & \textbf{Capture Rate (\%)} & \textbf{Std (\%)} & \textbf{Overhead (ms)} & \textbf{Blocks to 95\%} \\
-\hline
-"""
-        for i in range(len(data["rho"])):
-            latex += f"{data['rho'][i]:.2f} & {data['capture_rate'][i]:.1f} & {data['std'][i]:.1f} & {data['overhead_ms'][i]:.1f} & {data['blocks_95'][i]} \\\\\n"
-        
-        latex += r"""\hline
-\end{tabular}
-\end{table}
-"""
-        
-        with open(f"{TABLE_DIR}/table_rho.tex", "w") as f:
-            f.write(latex)
-        print("  Saved: table_rho.tex")
-    
-    def _table_shards(self):
-        """LaTeX table for shard scalability."""
-        if "shards" not in self.results:
-            return
-        
-        data = self.results["shards"]
-        
-        latex = r"""\begin{table}[htbp]
-\centering
-\caption{Shard Scalability: Security vs Performance Trade-off}
-\label{tab:shard_scalability}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Shards} & \textbf{Validators/Shard} & \textbf{Capture Rate (\%)} & \textbf{TPS} \\
-\hline
-"""
-        for i in range(len(data["shards"])):
-            latex += f"{data['shards'][i]} & {data['validators'][i]} & {data['capture_rate'][i]:.1f} & {data['tps'][i]:,.0f} \\\\\n"
-        
-        latex += r"""\hline
-\end{tabular}
-\end{table}
-"""
-        
-        with open(f"{TABLE_DIR}/table_shards.tex", "w") as f:
-            f.write(latex)
-        print("  Saved: table_shards.tex")
-    
-    def _table_attacks(self):
-        """LaTeX table for attack scenarios."""
-        if "attacks" not in self.results:
-            return
-        
-        data = self.results["attacks"]
-        
-        latex = r"""\begin{table}[htbp]
-\centering
-\caption{CFI Response to Different Attack Strategies}
-\label{tab:attack_scenarios}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Attack Scenario} & \textbf{Average CFI} & \textbf{Detected} \\
-\hline
-"""
-        for i in range(len(data["scenarios"])):
-            detected = "Yes" if data["detected"][i] else "No"
-            latex += f"{data['scenarios'][i]} & {data['cfi'][i]:.3f} & {detected} \\\\\n"
-        
-        latex += r"""\hline
-\end{tabular}
-\end{table}
-"""
-        
-        with open(f"{TABLE_DIR}/table_attacks.tex", "w") as f:
-            f.write(latex)
-        print("  Saved: table_attacks.tex")
-    
-    def _table_summary(self):
-        """LaTeX table summarizing all results."""
-        latex = r"""\begin{table}[htbp]
-\centering
-\caption{CFP Protocol: Summary of Key Results}
-\label{tab:summary}
-\begin{tabular}{|l|l|}
-\hline
-\textbf{Metric} & \textbf{Value} \\
-\hline
-"""
-        
-        if "duration" in self.results:
-            latex += f"Security Improvement & {self.results['duration']['improvement']:.0f}\\% \\\\\n"
-            latex += f"Static Capture Duration & {self.results['duration']['static_avg']:.0f} blocks \\\\\n"
-            latex += f"CFP Capture Duration & {self.results['duration']['cfp_avg']:.0f} blocks \\\\\n"
-        
-        if "performance" in self.results:
-            latex += f"Throughput (TPS) & {self.results['performance']['tps']:,.0f} \\\\\n"
-            latex += f"Rotation Overhead & {self.results['performance']['rotation_ms']:.0f} ms \\\\\n"
-        
-        if "cross_shard" in self.results:
-            latex += f"Cross-Shard Success Rate & {self.results['cross_shard']['success_rate']:.0f}\\% \\\\\n"
-            latex += f"Cross-Shard Latency & {self.results['cross_shard']['avg_latency']:.1f} ms \\\\\n"
-        
-        latex += r"""\hline
-\end{tabular}
-\end{table}
-"""
-        
-        with open(f"{TABLE_DIR}/table_summary.tex", "w") as f:
-            f.write(latex)
-        print("  Saved: table_summary.tex")
-    
-    # ===========================================
-    # MAIN
-    # ===========================================
+ 
     
     def run(self):
         """Run complete evaluation."""
         self.evaluate_all()
         self.generate_all_plots()
-        self.generate_all_tables()
         
         print("\n" + "=" * 70)
         print("   PUBLICATION EVALUATION COMPLETE")
         print(f"   Plots: {PLOT_DIR}/")
-        print(f"   Tables: {TABLE_DIR}/")
         print("=" * 70)
 
 
