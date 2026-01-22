@@ -8,22 +8,10 @@ import time
 
 
 class Block:
-    """
-    Represents a single block in the blockchain.
     
-    A block contains a list of transactions, a reference to the previous block,
-    and metadata like timestamp and block number.
-    """
     
     def __init__(self, block_number, transactions, previous_hash):
-        """
-        Initialize a new block.
-        
-        Args:
-            block_number: The height of this block in the chain
-            transactions: List of Transaction objects included in this block
-            previous_hash: Hash of the previous block in the chain
-        """
+       
         self.block_number = block_number
         self.transactions = transactions
         self.previous_hash = previous_hash
@@ -32,15 +20,7 @@ class Block:
         self.block_hash = self.calculate_hash()
     
     def calculate_hash(self):
-        """
-        Calculate the hash of this block.
         
-        The hash is computed from all block data including full transaction details,
-        previous hash, timestamp, and nonce.
-        
-        Returns:
-            A hexadecimal string representing the block hash
-        """
         # Include full transaction data, not just IDs
         tx_data = "".join([
             f"{tx.sender}{tx.receiver}{tx.amount}{tx.tx_id}" 
@@ -62,12 +42,7 @@ class Block:
         return len(self.transactions)
     
     def to_dict(self):
-        """
-        Convert block to dictionary format.
-        
-        Returns:
-            Dictionary containing all block fields
-        """
+       
         return {
             "block_number": self.block_number,
             "block_hash": self.block_hash,
