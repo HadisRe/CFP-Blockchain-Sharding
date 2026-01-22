@@ -1,6 +1,5 @@
 """
 Attack Simulation module for CFP.
-Implements Equilibrium Capture attack from paper Section 5.
 
 Equilibrium Capture Attack:
 - Adversary controls a fixed fraction of validators
@@ -298,28 +297,14 @@ class CFPCommitteeSimulator:
 
 
 class EquilibriumCaptureExperiment:
-    """
-    Main experiment comparing Static vs CFP under attack.
-
-    Runs both simulations with same adversary fraction
-    and compares results.
-    """
+     
 
     def __init__(self):
         self.results = {}
 
     def run_experiment(self, num_shards, validators_per_shard, total_validators,
                        adversary_fraction, num_blocks, rho=0.2, threshold=0.5):
-        """
-        Run complete experiment.
-
-        Creates two identical networks, one static, one CFP.
-        Runs attack simulation on both.
-
-        KEY INSIGHT:
-        - Static: if adversary gets lucky with initial assignment, they keep control forever
-        - CFP: rotation means adversary can't maintain control even if they get it
-        """
+        
         from sharding import Network
         from cfp.fluidity import ValidatorFluidity
         from cfp.cfi import ConsensusFrictionIndex
@@ -376,8 +361,7 @@ class EquilibriumCaptureExperiment:
         cfp_history = cfp_sim.simulate(num_blocks, threshold)
         cfp_results = cfp_sim.analyze_results(cfp_history, threshold)
 
-        # ========== Comparison ==========
-        self.results = {
+         self.results = {
             "parameters": {
                 "num_shards": num_shards,
                 "validators_per_shard": validators_per_shard,
@@ -557,10 +541,7 @@ class AttackSimulator:
         }
 
 
-# For backward compatibility
-EquilibriumCaptureSimulator = EquilibriumCaptureExperiment
 
-# Test code
 if __name__ == "__main__":
     print("Testing Equilibrium Capture Attack Simulation")
     print("=" * 60)
@@ -580,8 +561,7 @@ if __name__ == "__main__":
 
     experiment.print_results()
 
-    # Theoretical comparison
-    print("\nTheoretical Analysis:")
+     print("\nTheoretical Analysis:")
     p = theoretical_capture_probability(0.3, 25, 13)
     print(f"  P(capture single shard with 30% adversary): {p:.4f}")
     print(f"  P(capture any of 4 shards): {1 - (1 - p) ** 4:.4f}")
