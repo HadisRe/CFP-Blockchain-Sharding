@@ -10,19 +10,10 @@ from core.transaction import Transaction
 
 
 class Network:
-    """
-    The main network that contains all shards.
-    Handles shard creation, validator assignment, and transaction routing.
-    """
+   
     
     def __init__(self, num_shards, validators_per_shard, total_validators=None):
-        """
-        Initialize the network.
-        
-        num_shards: how many shards to create (K in the paper)
-        validators_per_shard: validators in each shard (n in the paper)
-        total_validators: size of global pool (N in the paper)
-        """
+        " 
         if total_validators is None:
             # need extra validators for rotation
             total_validators = num_shards * validators_per_shard * 2
@@ -41,8 +32,7 @@ class Network:
         self.account_to_shard = {}
     
     def _setup_shards(self):
-        """Create shards and assign initial validators."""
-        all_validators = self.validator_pool.validators.copy()
+         all_validators = self.validator_pool.validators.copy()
         random.shuffle(all_validators)
         
         for i in range(self.num_shards):
@@ -60,10 +50,7 @@ class Network:
                 self.validator_pool.mark_assigned(v)
     
     def register_account(self, account_id, shard_id=None):
-        """
-        Register an account to a shard.
-        If no shard specified, assigns randomly.
-        """
+       
         if shard_id is None:
             shard_id = hash(account_id) % self.num_shards
         
@@ -72,8 +59,7 @@ class Network:
         return shard_id
     
     def get_account_shard(self, account_id):
-        """Get which shard an account belongs to."""
-        return self.account_to_shard.get(account_id)
+         return self.account_to_shard.get(account_id)
     
     def is_cross_shard(self, sender, receiver):
         """Check if transaction would be cross-shard."""
@@ -86,10 +72,7 @@ class Network:
         return sender_shard != receiver_shard
     
     def submit_transaction(self, tx):
-        """
-        Submit a transaction to the network.
-        Routes to appropriate shard(s).
-        """
+        
         sender_shard = self.get_account_shard(tx.sender)
         
         if sender_shard is None:
@@ -103,10 +86,7 @@ class Network:
         return sender_shard
     
     def process_round(self):
-        """
-        Process one round - each shard creates a block.
-        Returns list of created blocks.
-        """
+        
         blocks = []
         for shard_id, shard in self.shards.items():
             block = shard.process_block()
@@ -115,8 +95,7 @@ class Network:
         return blocks
     
     def get_network_stats(self):
-        """Get statistics about the network."""
-        total_blocks = sum(s.get_chain_height() for s in self.shards.values())
+         total_blocks = sum(s.get_chain_height() for s in self.shards.values())
         total_validators = sum(s.get_validator_count() for s in self.shards.values())
         
         adv_fractions = [s.get_adversarial_fraction() for s in self.shards.values()]
@@ -132,8 +111,7 @@ class Network:
         }
     
     def print_status(self):
-        """Print current network status."""
-        stats = self.get_network_stats()
+         stats = self.get_network_stats()
         
         print(f"\n{'='*50}")
         print("Network Status")
