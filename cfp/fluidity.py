@@ -17,33 +17,13 @@ import hashlib
 
 
 class VRFBasedSelector:
-    """
-    Selects validators using VRF outputs.
-
-    How it works:
-    1. Each validator generates a VRF output using the block hash
-    2. Sort validators by their VRF output
-    3. Select top/bottom N validators for rotation
-
-    This is verifiable because:
-    - Anyone can check each validator's VRF output
-    - The selection is deterministic based on VRF outputs
-    """
+   
 
     def __init__(self):
         self.selection_history = []
 
     def select_validators_to_leave(self, shard, block_hash, count):
-        """
-        Select validators to leave the shard using VRF.
-
-        Process:
-        1. Each validator in shard generates VRF output with block_hash
-        2. Sort by VRF value
-        3. Lowest values leave (could also be highest, just needs to be consistent)
-
-        Returns list of (validator, vrf_output) tuples for verification.
-        """
+         
         if count <= 0 or count >= len(shard.validators):
             return []
 
@@ -76,11 +56,7 @@ class VRFBasedSelector:
         return selected
 
     def select_validators_to_join(self, available_validators, shard, block_hash, count):
-        """
-        Select validators to join the shard using VRF.
-
-        Same process but from the pool of available validators.
-        """
+         
         if count <= 0 or len(available_validators) == 0:
             return []
 
@@ -116,13 +92,7 @@ class VRFBasedSelector:
         return selected
 
     def verify_selection(self, selection_result):
-        """
-        Verify that a selection was done correctly.
-
-        Anyone can call this to verify:
-        1. Each VRF output is valid for the validator's public key
-        2. The selection follows the sorting rule
-        """
+       
         if not selection_result:
             return True
 
@@ -144,15 +114,7 @@ class VRFBasedSelector:
 
 
 class ValidatorFluidity:
-    """
-    Manages validator rotation within shards.
-    This is the core mechanism that makes CFP different from other protocols.
-
-    Key properties:
-    - Unpredictable: No one can predict who will be selected before the block
-    - Verifiable: Anyone can verify the selection was fair using VRF proofs
-    - Configurable: Rotation rate (rho) can be adjusted based on security needs
-    """
+     
 
     def __init__(self, network, rho=0.2, rho_min=0.1, rho_max=0.5):
         """
@@ -172,17 +134,7 @@ class ValidatorFluidity:
         self.block_number = 0
 
     def calculate_rotation_count(self, shard):
-        """
-        Calculate how many validators to rotate.
-        From paper equation (12): rt = ceil(rho * n)
-
-        Parameters:
-        - rho: rotation rate (e.g., 0.2 = 20%)
-        - n: number of validators in shard
-
-        Returns:
-        - rt: number of validators to rotate
-        """
+         
         n = shard.get_validator_count()
         rt = math.ceil(self.rho * n)
         return rt
@@ -198,16 +150,7 @@ class ValidatorFluidity:
         return hashlib.sha256(block_data.encode()).hexdigest()
 
     def rotate_shard(self, shard, block_hash=None):
-        """
-        Perform one rotation on a shard using VRF-based selection.
-
-        Process:
-        1. Calculate how many to rotate (rt)
-        2. Use VRF to select who leaves
-        3. Use VRF to select who joins from available pool
-        4. Execute the rotation
-        5. Return info with proofs for verification
-        """
+        
         if block_hash is None:
             block_hash = self.get_current_block_hash()
 
@@ -266,14 +209,7 @@ class ValidatorFluidity:
         return rotation_info
 
     def verify_rotation(self, rotation_info):
-        """
-        Verify that a rotation was performed correctly.
-
-        Checks:
-        1. VRF outputs for leaving validators are valid
-        2. VRF outputs for joining validators are valid
-        3. Selection follows the sorting rule
-        """
+        
         if rotation_info is None:
             return True
 
@@ -288,10 +224,7 @@ class ValidatorFluidity:
         return True
 
     def rotate_all_shards(self, block_hash=None):
-        """
-        Rotate validators in all shards.
-        Called once per block.
-        """
+        
         if block_hash is None:
             block_hash = self.get_current_block_hash()
 
@@ -305,10 +238,7 @@ class ValidatorFluidity:
         return results
 
     def adjust_rho(self, new_rho):
-        """
-        Adjust rotation rate.
-        Keeps it within min/max bounds.
-        """
+        
         old_rho = self.rho
         self.rho = max(self.rho_min, min(self.rho_max, new_rho))
         return self.rho
@@ -322,17 +252,7 @@ class ValidatorFluidity:
         return self.adjust_rho(self.rho - delta)
 
     def get_cumulative_refresh(self, blocks):
-        """
-        Calculate cumulative refresh ratio over L blocks.
-        From paper equation (14): R_cum(L) = 1 - (1-rho)^L
-
-        This tells us what fraction of the committee has been replaced
-        after L blocks.
-
-        Example: with rho=0.2 (20% per block)
-        - After 5 blocks: 1 - 0.8^5 = 67.2% refreshed
-        - After 10 blocks: 1 - 0.8^10 = 89.3% refreshed
-        """
+        
         refresh = 1 - ((1 - self.rho) ** blocks)
         return refresh
 
