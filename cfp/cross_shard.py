@@ -1,7 +1,6 @@
 """
 Cross-Shard Transaction Protocol for CFP simulation.
-Implements snapshot-anchored two-phase commit from paper section 4.6.
-
+ 
 Uses equations (16) to (21) from the paper:
 - Eq 16: Pinned signer set Signers_i = V_i(h_i)
 - Eq 17: Prepare message with partial signatures
@@ -10,8 +9,7 @@ Uses equations (16) to (21) from the paper:
 - Eq 20: Commit certificate C_commit = {PC_a, PC_b, ..., PC_m}
 - Eq 21: Abort and rollback mechanism
 
-Uses real ECDSA signatures from validators for multi-signature scheme.
-"""
+ """
 
 import time
 import hashlib
@@ -19,10 +17,7 @@ import random
 
 
 class CrossShardTransaction:
-    """
-    A transaction that spans multiple shards.
-    Needs coordination between shards to ensure atomicity.
-    """
+    
 
     def __init__(self, tx_id, sender, receiver, amount, sender_shard, receiver_shard):
         self.tx_id = tx_id
@@ -40,10 +35,7 @@ class CrossShardTransaction:
         self.prepare_certificates = {}  # shard_id -> PrepareCertificate
 
     def get_message_to_sign(self):
-        """
-        Create the message that validators will sign.
-        This ensures all validators sign the same thing.
-        """
+        
         message = f"CROSS_TX|{self.tx_id}|{self.sender}|{self.receiver}|{self.amount}|{self.sender_shard}|{self.receiver_shard}"
         return message
 
@@ -52,13 +44,7 @@ class CrossShardTransaction:
 
 
 class Snapshot:
-    """
-    State snapshot for a shard at specific height.
-    From paper equation (16): Signers_i = V_i(h_i)
-
-    The snapshot pins the validator set at a specific block height.
-    This prevents attacks where validators change during the protocol.
-    """
+    
 
     def __init__(self, shard, height=None):
         if height is None:
@@ -79,10 +65,7 @@ class Snapshot:
         self.timestamp = time.time()
 
     def get_signer_set(self):
-        """
-        Get pinned signer set for this snapshot.
-        From paper equation (16): Signers_i = V_i(h_i)
-        """
+        
         return self.pinned_validators.copy()
 
     def get_validator_count(self):
@@ -121,10 +104,7 @@ class Snapshot:
 
 
 class ValidatorSignature:
-    """
-    A single validator's signature on a message.
-    Contains everything needed to verify the signature.
-    """
+    
 
     def __init__(self, validator_id, public_key, message, signature_bytes):
         self.validator_id = validator_id
@@ -134,10 +114,7 @@ class ValidatorSignature:
         self.timestamp = time.time()
 
     def verify(self):
-        """
-        Verify this signature is valid.
-        Uses the validator's public key to check.
-        """
+      
         try:
             import hashlib
             self.public_key.verify(
@@ -151,15 +128,7 @@ class ValidatorSignature:
 
 
 class MultiSignature:
-    """
-    Collection of signatures from multiple validators.
-    Used instead of threshold signature for simplicity.
-
-    Tracks:
-    - All signatures received
-    - Which are valid
-    - Whether threshold is met
-    """
+    
 
     def __init__(self, message, threshold):
         self.message = message
@@ -168,10 +137,7 @@ class MultiSignature:
         self.valid_signatures = set()  # validator_ids with valid signatures
 
     def add_signature(self, validator_id, public_key, signature_bytes):
-        """
-        Add a signature from a validator.
-        Immediately verifies it.
-        """
+         
         sig = ValidatorSignature(validator_id, public_key, self.message, signature_bytes)
         self.signatures[validator_id] = sig
 
@@ -202,12 +168,7 @@ class MultiSignature:
 
 
 class PrepareMessage:
-    """
-    Prepare message from a validator.
-    From paper equation (17).
-
-    Each validator sends their vote (yes/no) and signature.
-    """
+    
 
     def __init__(self, shard_id, tx_id, validator_id, vote, signature):
         self.shard_id = shard_id
@@ -219,15 +180,7 @@ class PrepareMessage:
 
 
 class PrepareCertificate:
-    """
-    Certificate proving shard prepared a transaction.
-    From paper equation (19): PC_i = (Tx, h_i, snap_i(h_i), Sigma_i)
-
-    Contains:
-    - Transaction ID
-    - Snapshot (pinned validator set)
-    - Multi-signature from validators
-    """
+    
 
     def __init__(self, tx_id, shard_id, snapshot, multi_signature):
         self.tx_id = tx_id
@@ -237,17 +190,13 @@ class PrepareCertificate:
         self.timestamp = time.time()
 
     def is_valid(self):
-        """
-        Verify this certificate is valid.
-        Checks that multi-signature has enough valid signatures.
-        """
+        
         if self.multi_signature is None:
             return False
         return self.multi_signature.has_threshold()
 
     def get_signer_count(self):
-        """How many validators signed."""
-        return self.multi_signature.get_valid_count() if self.multi_signature else 0
+         return self.multi_signature.get_valid_count() if self.multi_signature else 0
 
     def get_threshold(self):
         """Required threshold."""
@@ -265,13 +214,7 @@ class PrepareCertificate:
 
 
 class CommitCertificate:
-    """
-    Final commit certificate for cross-shard transaction.
-    From paper equation (20): C_commit = {PC_a, PC_b, ..., PC_m}
-
-    Contains prepare certificates from ALL involved shards.
-    Only created when all shards have prepared successfully.
-    """
+    
 
     def __init__(self, tx_id, prepare_certificates):
         self.tx_id = tx_id
@@ -288,10 +231,7 @@ class CommitCertificate:
         return True
 
     def verify(self, expected_shards):
-        """
-        Full verification of commit certificate.
-        Checks all prepare certificates are valid.
-        """
+        
         if not self.is_complete(expected_shards):
             return False
 
@@ -310,15 +250,7 @@ class CommitCertificate:
 
 
 class AbortCertificate:
-    """
-    Abort certificate when transaction fails.
-    From paper equation (21): triggers rollback on all shards.
-
-    Created when:
-    - A shard rejects (not enough votes)
-    - Timeout occurs
-    - Invalid state detected
-    """
+    
 
     def __init__(self, tx_id, reason, failed_shard=None, details=None):
         self.tx_id = tx_id
@@ -336,19 +268,10 @@ class AbortCertificate:
 
 
 class CrossShardCoordinator:
-    """
-    Coordinates cross-shard transactions.
-    Manages the two-phase commit protocol with real signatures.
-    """
+     
 
     def __init__(self, network, threshold_ratio=0.67, timeout=10):
-        """
-        Setup coordinator.
-
-        network: the Network object
-        threshold_ratio: fraction of validators needed (default 2/3)
-        timeout: max time for responses (seconds)
-        """
+        
         self.network = network
         self.threshold_ratio = threshold_ratio
         self.timeout = timeout
@@ -363,8 +286,7 @@ class CrossShardCoordinator:
         }
 
     def create_cross_shard_tx(self, sender, receiver, amount):
-        """Create a new cross-shard transaction."""
-        sender_shard = self.network.get_account_shard(sender)
+         sender_shard = self.network.get_account_shard(sender)
         receiver_shard = self.network.get_account_shard(receiver)
 
         if sender_shard is None or receiver_shard is None:
@@ -388,26 +310,14 @@ class CrossShardCoordinator:
         return tx
 
     def take_snapshot(self, tx, shard_id):
-        """
-        Take snapshot from a shard.
-        From paper equation (16): pins the validator set.
-        """
+        
         shard = self.network.shards[shard_id]
         snapshot = Snapshot(shard)
         tx.snapshots[shard_id] = snapshot
         return snapshot
 
     def collect_prepare_votes(self, tx, shard_id):
-        """
-        Collect prepare votes from validators in a shard.
-
-        Each validator:
-        1. Checks if they can prepare (validate transaction)
-        2. Signs the transaction message with their private key
-        3. Sends their vote and signature
-
-        Returns a MultiSignature object.
-        """
+        
         snapshot = tx.snapshots.get(shard_id)
         if snapshot is None:
             return None
@@ -443,22 +353,8 @@ class CrossShardCoordinator:
         return multi_sig
 
     def create_prepare_certificate(self, tx, shard_id, multi_sig):
-        """
-        Create prepare certificate if threshold is met.
-        From paper equation (19): PC_i = (Tx, h_i, snap_i, Sigma_i)
-        """
-        snapshot = tx.snapshots[shard_id]
-
-        if not multi_sig.has_threshold():
-            return None
-
-        cert = PrepareCertificate(tx.tx_id, shard_id, snapshot, multi_sig)
-        tx.prepare_certificates[shard_id] = cert
-
-        return cert
-
-    def execute_two_phase_commit(self, tx):
-        """
+       paper equation (19): PC_i = (Tx, h_i, snap_i, Sigma_i)
+        
         Execute full two-phase commit protocol.
 
         Phase 0: Take snapshots (pin validator sets)
@@ -557,15 +453,7 @@ class CrossShardCoordinator:
         return tx, result
 
     def verify_commit_certificate(self, commit_cert, expected_shards):
-        """
-        Independently verify a commit certificate.
-        Anyone can call this to check the certificate is valid.
-
-        Verifies:
-        1. All expected shards have prepare certificates
-        2. Each prepare certificate has valid signatures
-        3. Each prepare certificate meets threshold
-        """
+        
         return commit_cert.verify(expected_shards)
 
     def get_success_rate(self):
