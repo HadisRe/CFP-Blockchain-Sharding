@@ -1,6 +1,5 @@
 """
 CFP Publication-Ready Evaluation
-Creative plots + LaTeX tables for paper
 """
 
 import time
@@ -365,7 +364,7 @@ class PublicationEvaluator:
             bar = ax.bar(i, cap, width, color=color, edgecolor='black', linewidth=2)
             
             # Add shard icon on top
-            ax.text(i, cap + 3, f'🔲 × {shards}', ha='center', fontsize=14)
+            ax.text(i, cap + 3, f'  × {shards}', ha='center', fontsize=14)
             ax.text(i, -8, f'{val} validators\nper shard', ha='center', fontsize=10, 
                    style='italic', color='gray')
         
@@ -604,9 +603,9 @@ class PublicationEvaluator:
         ax.text(4, 8.5, 'Static System', ha='center', fontsize=20, fontweight='bold', color='#c0392b')
         ax.text(4, 7.5, '(No Rotation)', ha='center', fontsize=14, color='#7f8c8d')
         
-        ax.text(4, 6.3, '❌ Permanent Capture', ha='center', fontsize=14, color='#e74c3c')
-        ax.text(4, 5.5, '❌ No Attack Detection', ha='center', fontsize=14, color='#e74c3c')
-        ax.text(4, 4.7, '❌ Fixed Committees', ha='center', fontsize=14, color='#e74c3c')
+        ax.text(4, 6.3, '  Permanent Capture', ha='center', fontsize=14, color='#e74c3c')
+        ax.text(4, 5.5, '  No Attack Detection', ha='center', fontsize=14, color='#e74c3c')
+        ax.text(4, 4.7, '  Fixed Committees', ha='center', fontsize=14, color='#e74c3c')
         
         ax.text(4, 3.2, f'Capture Duration:', ha='center', fontsize=12, fontweight='bold')
         ax.text(4, 2.5, f'{self.results["duration"]["static_avg"]:.0f} blocks', 
@@ -667,3 +666,4 @@ class PublicationEvaluator:
 if __name__ == "__main__":
     evaluator = PublicationEvaluator()
     evaluator.run()
+
