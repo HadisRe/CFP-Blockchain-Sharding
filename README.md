@@ -54,13 +54,5 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-## Run Evaluation
-
-```bash
-python -m evaluation.publication_evaluation
-```
-
-**Output:**
-- `publication_plots/` - Visualization files 
 
 
