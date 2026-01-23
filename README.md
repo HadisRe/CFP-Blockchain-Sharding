@@ -63,6 +63,4 @@ python -m evaluation.publication_evaluation
 **Output:**
 - `publication_plots/` - Visualization files 
 
-## License
 
-MIT License
