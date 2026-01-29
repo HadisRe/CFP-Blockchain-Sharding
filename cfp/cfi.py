@@ -1,25 +1,21 @@
 """
 Consensus Friction Index (CFI) module for CFP simulation.
 Measures voting diversity to detect predictable behavior.
-
-Based on paper equation (15):
-CFI(T) = 1 - (1/n) * sum((streak_v / T)^2)
-
 """
 
 
 class ConsensusFrictionIndex:
-    
+     
     
     def __init__(self, fluidity_manager, threshold=0.5, window=10):
-       
+        
         self.fluidity = fluidity_manager
         self.threshold = threshold
         self.window = window
         self.cfi_history = {}  # track CFI per shard over time
     
     def calculate_streak(self, votes):
-       
+         
         if not votes:
             return 0
         
@@ -36,10 +32,7 @@ class ConsensusFrictionIndex:
         return max_streak
     
     def calculate_cfi(self, shard):
-        """
-        Calculate CFI for a shard.
-        Uses equation (15) from paper.
-        """
+        
         validators = shard.validators
         n = len(validators)
         
@@ -71,7 +64,7 @@ class ConsensusFrictionIndex:
         return cfi
     
     def check_shard(self, shard):
-       
+        
         cfi = self.calculate_cfi(shard)
         
         # record history
@@ -114,7 +107,10 @@ class ConsensusFrictionIndex:
         return total / count if count > 0 else 1.0
     
     def simulate_voting_round(self, network, adversarial_coordination=False):
-        
+        """
+        Simulate validators casting votes.
+        If adversarial_coordination=True, adversarial validators vote same way.
+        """
         block_hash = f"block_{len(self.cfi_history)}"
         
         for shard in network.shards.values():
