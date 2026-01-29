@@ -1,12 +1,12 @@
-"""
-CFP Scientific Evaluation Module
-Uses REAL classes from phases 1-7 to measure paper metrics.
-
-"""
+ 
 
 import time
 import random
 import os
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 
 # Import from phase 1-2: Base infrastructure
 from sharding import Network
@@ -26,12 +26,6 @@ from cfp.attack import StaticCommitteeSimulator, CFPCommitteeSimulator
 
 # Import from phase 7: Benchmarking
 from cfp.benchmark import ThroughputBenchmark, RotationOverheadBenchmark
-
-# Plotting
-import matplotlib.pyplot as plt
-import matplotlib
-
-matplotlib.use('Agg')
 
 # Create output directory
 PLOT_DIR = "evaluation_plots"
@@ -65,7 +59,7 @@ class CFPEvaluator:
         print(f"  Fluidity: rho={self.fluidity.rho}")
 
         # Phase 3: Create CFI monitor
-        self.cfi_monitor = ConsensusFrictionIndex(self.fluidity, threshold=0.5, window=10)
+        self.cfi_monitor = ConsensusFrictionIndex(self.fluidity, threshold=0.65, window=10)
         print(f"  CFI monitor: threshold={self.cfi_monitor.threshold}")
 
         # Phase 4: Create cross-shard coordinator
@@ -170,7 +164,7 @@ class CFPEvaluator:
         self.results["cfi"] = {"avg_honest": avg_honest, "avg_30": avg_30, "avg_40": avg_40}
         return self.results["cfi"]
 
-    def evaluate_capture_probability(self, num_blocks=30, num_trials=1):
+    def evaluate_capture_probability(self, num_blocks=30, num_trials=50):
         """Evaluate equations 22 and 23: Capture probability"""
         print("\n" + "-" * 50)
         print("METRIC 4: Capture Probability (Equations 22, 23)")
@@ -186,7 +180,7 @@ class CFPEvaluator:
             cfp_rates = []
 
             for trial in range(num_trials):
-                # Static system - run simulation without rotation
+                # Static system
                 static_net = Network(num_shards=4, validators_per_shard=25, total_validators=200)
                 static_sim = StaticCommitteeSimulator(static_net)
                 static_sim.setup_adversary(f)
@@ -194,7 +188,7 @@ class CFPEvaluator:
                 static_analysis = static_sim.analyze_results(static_history, threshold=0.5)
                 static_rates.append(static_analysis["overall_capture_rate"])
 
-                # CFP system - run simulation with rotation
+                # CFP system
                 cfp_net = Network(num_shards=4, validators_per_shard=25, total_validators=200)
                 cfp_fluidity = ValidatorFluidity(cfp_net, rho=0.2)
                 cfp_cfi = ConsensusFrictionIndex(cfp_fluidity, threshold=0.5, window=10)
@@ -262,8 +256,10 @@ class CFPEvaluator:
         rot_result = rot_bench.run(30)
         print(f"  Rotation overhead: {rot_result['mean_time'] * 1000:.1f} ms")
 
-        self.results["performance"] = {"tps": tps_result['throughput_tps'],
-                                       "rotation_ms": rot_result['mean_time'] * 1000}
+        self.results["performance"] = {
+            "tps": tps_result['throughput_tps'],
+            "rotation_ms": rot_result['mean_time'] * 1000
+        }
         return self.results["performance"]
 
     def evaluate_partitioning(self):
@@ -274,11 +270,17 @@ class CFPEvaluator:
 
         partitioner = AccountPartitioner(self.network)
 
+        # 70% intra-cluster transactions, 30% inter-cluster
         for _ in range(500):
-            cluster = random.randint(0, 3)
-            base = cluster * 50
-            sender = f"user_{base + random.randint(0, 49)}"
-            receiver = f"user_{base + random.randint(0, 49)}"
+            if random.random() < 0.7:
+                cluster = random.randint(0, 3)
+                base = cluster * 50
+                sender = f"user_{base + random.randint(0, 49)}"
+                receiver = f"user_{base + random.randint(0, 49)}"
+            else:
+                sender = f"user_{random.randint(0, 199)}"
+                receiver = f"user_{random.randint(0, 199)}"
+
             if sender != receiver:
                 partitioner.record_transaction(sender, receiver)
 
@@ -298,159 +300,165 @@ class CFPEvaluator:
         return self.results["partitioning"]
 
     def plot_all(self):
-        """Generate all plots with improved design"""
+        """Generate publication-quality plots"""
         print("\n" + "=" * 60)
         print("GENERATING PLOTS")
         print("=" * 60)
 
-        # Set style
-        plt.style.use('seaborn-v0_8-whitegrid')
+        plt.rcParams['font.family'] = 'serif'
+        plt.rcParams['font.size'] = 10
+        plt.rcParams['axes.grid'] = False
+        plt.rcParams['axes.linewidth'] = 0.8
+        plt.rcParams['font.weight'] = 'normal'
 
-        # Plot 1: Cumulative Refresh - Clean without threshold line
+        # Plot 1: Cumulative Refresh
         if "cumulative_refresh" in self.results:
             data = self.results["cumulative_refresh"]
-            fig, ax = plt.subplots(figsize=(10, 6))
+            fig, ax = plt.subplots(figsize=(7, 5))
             blocks = [d["blocks"] for d in data]
             R_cum = [d["R_cum"] * 100 for d in data]
 
-            ax.plot(blocks, R_cum, color='#2980b9', linewidth=3, marker='o', markersize=10,
-                    markerfacecolor='white', markeredgewidth=2)
-            ax.fill_between(blocks, R_cum, alpha=0.2, color='#2980b9')
+            ax.fill_between(blocks, R_cum, alpha=0.25, color='#3498db')
+            ax.plot(blocks, R_cum, 'o-', color='#2980b9', linewidth=2, markersize=6,
+                    markerfacecolor='white', markeredgewidth=1.5)
+            ax.axhline(y=95, color='#95a5a6', linestyle=':', linewidth=1)
 
-            ax.set_xlabel('Number of Blocks (L)', fontsize=14, fontweight='bold')
-            ax.set_ylabel('Committee Refreshed (%)', fontsize=14, fontweight='bold')
-            ax.set_title('Cumulative Refresh Rate\n(Equation 14: R_cum = 1 - (1-ρ)^L)',
-                         fontsize=16, fontweight='bold', pad=15)
+            ax.set_xlabel('Number of Blocks (L)')
+            ax.set_ylabel('Committee Refreshed (%)')
             ax.set_ylim(0, 105)
             ax.set_xlim(0, 32)
-
-            # Add annotations
-            ax.annotate(f'{R_cum[2]:.0f}%', xy=(blocks[2], R_cum[2]), xytext=(blocks[2] + 2, R_cum[2] - 10),
-                        fontsize=12, fontweight='bold', color='#2980b9')
-            ax.annotate(f'{R_cum[4]:.0f}%', xy=(blocks[4], R_cum[4]), xytext=(blocks[4] + 2, R_cum[4] - 5),
-                        fontsize=12, fontweight='bold', color='#2980b9')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
             plt.tight_layout()
             plt.savefig(f"{PLOT_DIR}/01_cumulative_refresh.png", dpi=300, facecolor='white')
             plt.close()
             print("  Saved: 01_cumulative_refresh.png")
 
-        # Plot 2: CFI - Horizontal bar chart
+        # Plot 2: CFI Comparison
         if "cfi" in self.results:
-            fig, ax = plt.subplots(figsize=(10, 6))
+            fig, ax = plt.subplots(figsize=(7, 4))
 
-            categories = ['40% Adversary\n(Coordinated)', '30% Adversary\n(Coordinated)', 'Honest\nVoting']
-            values = [self.results["cfi"]["avg_40"], self.results["cfi"]["avg_30"], self.results["cfi"]["avg_honest"]]
-            colors = ['#e74c3c', '#f39c12', '#27ae60']
+            categories = ['Honest Voting', '30% Adversary', '40% Adversary']
+            values = [self.results["cfi"]["avg_honest"], self.results["cfi"]["avg_30"], self.results["cfi"]["avg_40"]]
+            colors = ['#27ae60', '#f39c12', '#c0392b']
 
-            bars = ax.barh(categories, values, color=colors, edgecolor='white', linewidth=2, height=0.6)
-
-            ax.axvline(x=0.5, color='#2c3e50', linestyle='--', linewidth=2, label='Detection Threshold (0.5)')
+            y_pos = np.arange(len(categories))
+            bars = ax.barh(y_pos, values, color=colors, height=0.5, edgecolor='white')
+            ax.axvline(x=0.65, color='#7f8c8d', linestyle='--', linewidth=1.2, alpha=0.7)
 
             for bar, val in zip(bars, values):
                 ax.text(val + 0.02, bar.get_y() + bar.get_height() / 2, f'{val:.3f}',
-                        va='center', fontsize=14, fontweight='bold')
+                        va='center', fontsize=10)
 
-            ax.set_xlabel('CFI Value', fontsize=14, fontweight='bold')
-            ax.set_title('Consensus Friction Index (CFI)\nHigher = More Diverse Voting',
-                         fontsize=16, fontweight='bold', pad=15)
-            ax.set_xlim(0, 1.1)
-            ax.legend(loc='lower right', fontsize=11)
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(categories)
+            ax.set_xlabel('CFI Value')
+            ax.set_xlim(0, 1.0)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
             plt.tight_layout()
             plt.savefig(f"{PLOT_DIR}/02_cfi_comparison.png", dpi=300, facecolor='white')
             plt.close()
             print("  Saved: 02_cfi_comparison.png")
 
-        # Plot 3: Capture Probability - Area chart
+        # Plot 3: Capture Probability
         if "capture" in self.results:
-            fig, ax = plt.subplots(figsize=(12, 6))
+            fig, ax = plt.subplots(figsize=(7, 5))
             x = [f * 100 for f in self.results["capture"]["fractions"]]
             static = [r * 100 for r in self.results["capture"]["static_rate"]]
             cfp = [r * 100 for r in self.results["capture"]["cfp_rate"]]
 
-            ax.fill_between(x, static, alpha=0.3, color='#e74c3c', label='Static System')
-            ax.fill_between(x, cfp, alpha=0.3, color='#27ae60', label='CFP System')
-            ax.plot(x, static, 'o-', color='#c0392b', linewidth=3, markersize=10, markerfacecolor='white',
-                    markeredgewidth=2)
-            ax.plot(x, cfp, 's-', color='#1e8449', linewidth=3, markersize=10, markerfacecolor='white',
-                    markeredgewidth=2)
+            ax.fill_between(x, static, alpha=0.15, color='#e74c3c')
+            ax.fill_between(x, cfp, alpha=0.15, color='#27ae60')
+            ax.plot(x, static, 'o-', color='#c0392b', linewidth=2, markersize=6,
+                    markerfacecolor='white', markeredgewidth=1.5, label='Static')
+            ax.plot(x, cfp, 's-', color='#27ae60', linewidth=2, markersize=6,
+                    markerfacecolor='white', markeredgewidth=1.5, label='CFP')
 
-            ax.set_xlabel('Adversary Fraction (%)', fontsize=14, fontweight='bold')
-            ax.set_ylabel('Blocks with Capture (%)', fontsize=14, fontweight='bold')
-            ax.set_title('Capture Rate Comparison\nStatic vs CFP (Equations 22-23)',
-                         fontsize=16, fontweight='bold', pad=15)
-            ax.legend(fontsize=12, loc='upper left')
-            ax.set_ylim(0, 110)
-
-            # Add improvement annotation
-            if static[-1] > cfp[-1]:
-                improvement = static[-1] - cfp[-1]
-                ax.annotate(f'{improvement:.0f}% better', xy=(40, (static[-1] + cfp[-1]) / 2),
-                            fontsize=12, fontweight='bold', color='#27ae60',
-                            bbox=dict(boxstyle='round', facecolor='white', edgecolor='#27ae60'))
+            ax.set_xlabel('Adversary Fraction (%)')
+            ax.set_ylabel('Capture Rate (%)')
+            ax.legend(loc='upper left', frameon=False, fontsize=10)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
             plt.tight_layout()
             plt.savefig(f"{PLOT_DIR}/03_capture_probability.png", dpi=300, facecolor='white')
             plt.close()
             print("  Saved: 03_capture_probability.png")
 
-        # Plot 4: Performance - Gauge style
+        # Plot 4: Performance - Semi-circle gauges
         if "performance" in self.results:
-            fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+            fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+            tps = self.results["performance"]["tps"]
+            overhead = self.results["performance"]["rotation_ms"]
+
+            theta = np.linspace(np.pi, 0, 100)
+            r_outer, r_inner = 1.0, 0.6
 
             # TPS gauge
             ax1 = axes[0]
-            tps_val = self.results["performance"]["tps"]
-            ax1.barh(['Throughput'], [tps_val], color='#3498db', edgecolor='white', height=0.5)
-            ax1.set_xlim(0, tps_val * 1.3)
-            ax1.set_xlabel('Transactions Per Second', fontsize=14, fontweight='bold')
-            ax1.set_title(f'TPS: {tps_val:,.0f}', fontsize=18, fontweight='bold', color='#3498db')
-            ax1.tick_params(left=False, labelleft=False)
+            ax1.fill_between(np.cos(theta) * r_outer, np.sin(theta) * r_outer,
+                             np.sin(theta) * r_inner, alpha=0.2, color='#3498db')
+            fill_ratio = min(tps / 100000, 1.0)
+            theta_fill = np.linspace(np.pi, np.pi - fill_ratio * np.pi, 50)
+            ax1.fill_between(np.cos(theta_fill) * r_outer, np.sin(theta_fill) * r_outer,
+                             np.sin(theta_fill) * r_inner, color='#3498db', alpha=0.8)
+            ax1.plot(np.cos(theta) * r_outer, np.sin(theta) * r_outer, 'k-', linewidth=1)
+            ax1.plot(np.cos(theta) * r_inner, np.sin(theta) * r_inner, 'k-', linewidth=1)
+            ax1.text(0, 0.15, f'{tps/1000:.1f}K', ha='center', va='center',
+                     fontsize=18, fontweight='bold', color='#2c3e50')
+            ax1.text(0, -0.15, 'TPS', ha='center', va='center', fontsize=11, color='#7f8c8d')
+            ax1.set_xlim(-1.3, 1.3)
+            ax1.set_ylim(-0.4, 1.2)
+            ax1.set_aspect('equal')
+            ax1.axis('off')
 
-            # Rotation gauge
+            # Overhead gauge
             ax2 = axes[1]
-            rot_val = self.results["performance"]["rotation_ms"]
-            ax2.barh(['Overhead'], [rot_val], color='#e67e22', edgecolor='white', height=0.5)
-            ax2.set_xlim(0, rot_val * 1.5)
-            ax2.set_xlabel('Time (milliseconds)', fontsize=14, fontweight='bold')
-            ax2.set_title(f'Rotation: {rot_val:.0f} ms', fontsize=18, fontweight='bold', color='#e67e22')
-            ax2.tick_params(left=False, labelleft=False)
+            ax2.fill_between(np.cos(theta) * r_outer, np.sin(theta) * r_outer,
+                             np.sin(theta) * r_inner, alpha=0.2, color='#e67e22')
+            fill_ratio2 = min(overhead / 1000, 1.0)
+            theta_fill2 = np.linspace(np.pi, np.pi - fill_ratio2 * np.pi, 50)
+            ax2.fill_between(np.cos(theta_fill2) * r_outer, np.sin(theta_fill2) * r_outer,
+                             np.sin(theta_fill2) * r_inner, color='#e67e22', alpha=0.8)
+            ax2.plot(np.cos(theta) * r_outer, np.sin(theta) * r_outer, 'k-', linewidth=1)
+            ax2.plot(np.cos(theta) * r_inner, np.sin(theta) * r_inner, 'k-', linewidth=1)
+            ax2.text(0, 0.15, f'{overhead:.0f}', ha='center', va='center',
+                     fontsize=18, fontweight='bold', color='#2c3e50')
+            ax2.text(0, -0.15, 'Rotation (ms)', ha='center', va='center', fontsize=11, color='#7f8c8d')
+            ax2.set_xlim(-1.3, 1.3)
+            ax2.set_ylim(-0.4, 1.2)
+            ax2.set_aspect('equal')
+            ax2.axis('off')
 
             plt.tight_layout()
             plt.savefig(f"{PLOT_DIR}/04_performance.png", dpi=300, facecolor='white')
             plt.close()
             print("  Saved: 04_performance.png")
 
-        # Plot 5: Partitioning - Before/After with arrow
+        # Plot 5: Partitioning - Donut charts
         if "partitioning" in self.results:
-            fig, ax = plt.subplots(figsize=(10, 6))
-
+            fig, axes = plt.subplots(1, 2, figsize=(9, 4))
             before = self.results["partitioning"]["before"] * 100
             after = self.results["partitioning"]["after"] * 100
 
-            x_pos = [0, 1]
-            values = [before, after]
-            colors = ['#e74c3c', '#27ae60']
+            # Before donut
+            ax1 = axes[0]
+            wedges1, _ = ax1.pie([before, 100 - before], colors=['#e74c3c', '#fadbd8'],
+                                  startangle=90, wedgeprops=dict(width=0.4, edgecolor='white'))
+            ax1.text(0, 0, f'{before:.0f}%', ha='center', va='center',
+                     fontsize=16, fontweight='bold', color='#c0392b')
+            ax1.set_title('Before', fontsize=11, pad=10)
 
-            bars = ax.bar(x_pos, values, color=colors, edgecolor='white', linewidth=2, width=0.5)
-
-            # Add arrow showing improvement
-            ax.annotate('', xy=(1, after + 5), xytext=(0, before - 5),
-                        arrowprops=dict(arrowstyle='->', color='#2c3e50', lw=3))
-            ax.text(0.5, before / 2 + 10, f'-{self.results["partitioning"]["improvement"]:.0f}%',
-                    ha='center', fontsize=20, fontweight='bold', color='#27ae60')
-
-            ax.set_xticks(x_pos)
-            ax.set_xticklabels(['Before\nPartitioning', 'After\nPartitioning'], fontsize=14, fontweight='bold')
-            ax.set_ylabel('Cross-Shard Ratio (%)', fontsize=14, fontweight='bold')
-            ax.set_title('Effect of Louvain Clustering\non Cross-Shard Transactions',
-                         fontsize=16, fontweight='bold', pad=15)
-            ax.set_ylim(0, before + 15)
-
-            # Add value labels
-            ax.text(0, before + 2, f'{before:.1f}%', ha='center', fontsize=14, fontweight='bold', color='#c0392b')
-            ax.text(1, after + 2, f'{after:.1f}%', ha='center', fontsize=14, fontweight='bold', color='#1e8449')
+            # After donut
+            ax2 = axes[1]
+            wedges2, _ = ax2.pie([after, 100 - after], colors=['#27ae60', '#d5f5e3'],
+                                  startangle=90, wedgeprops=dict(width=0.4, edgecolor='white'))
+            ax2.text(0, 0, f'{after:.0f}%', ha='center', va='center',
+                     fontsize=16, fontweight='bold', color='#1e8449')
+            ax2.set_title('After', fontsize=11, pad=10)
 
             plt.tight_layout()
             plt.savefig(f"{PLOT_DIR}/05_partitioning.png", dpi=300, facecolor='white')
@@ -464,7 +472,7 @@ class CFPEvaluator:
         self.evaluate_rotation_count()
         self.evaluate_cumulative_refresh()
         self.evaluate_cfi(num_rounds=30)
-        self.evaluate_capture_probability(num_blocks=50)
+        self.evaluate_capture_probability(num_blocks=50, num_trials=50)
         self.evaluate_cross_shard(num_tx=50)
         self.evaluate_performance(num_tx=300)
         self.evaluate_partitioning()
