@@ -17,10 +17,17 @@ from collections import defaultdict
 
 
 class TransactionGenerator:
-    
+    """
+    Generates realistic transaction workloads for benchmarking.
+    """
     
     def __init__(self, accounts, cross_shard_ratio=0.75):
-         
+        """
+        Setup generator.
+        
+        accounts: list of account IDs
+        cross_shard_ratio: target ratio of cross-shard transactions
+        """
         self.accounts = accounts
         self.cross_shard_ratio = cross_shard_ratio
     
@@ -40,7 +47,9 @@ class TransactionGenerator:
 
 
 class LatencyTracker:
-    
+    """
+    Tracks latency of operations.
+    """
     
     def __init__(self):
         self.measurements = defaultdict(list)
@@ -72,18 +81,25 @@ class LatencyTracker:
         }
     
     def get_all_stats(self):
-         return {op: self.get_stats(op) for op in self.measurements}
+        """Get statistics for all operations."""
+        return {op: self.get_stats(op) for op in self.measurements}
 
 
 class ThroughputBenchmark:
-    
+    """
+    Measures transaction throughput.
+    """
     
     def __init__(self, network):
         self.network = network
         self.results = []
     
     def run(self, num_transactions, batch_size=100):
-         
+        """
+        Run throughput benchmark.
+        
+        Processes transactions and measures how many per second.
+        """
         from core import Transaction
         
         accounts = [f"user_{i}" for i in range(200)]
@@ -139,7 +155,9 @@ class ThroughputBenchmark:
 
 
 class ScalabilityBenchmark:
-     
+    """
+    Measures how performance scales with number of shards.
+    """
     
     def __init__(self):
         self.results = []
@@ -193,7 +211,9 @@ class ScalabilityBenchmark:
 
 
 class RotationOverheadBenchmark:
-     
+    """
+    Measures the overhead of validator rotation.
+    """
     
     def __init__(self, network, fluidity_manager):
         self.network = network
@@ -227,7 +247,9 @@ class RotationOverheadBenchmark:
 
 
 class CrossShardBenchmark:
-    
+    """
+    Measures cross-shard transaction performance.
+    """
     
     def __init__(self, network, coordinator):
         self.network = network
@@ -288,7 +310,9 @@ class CrossShardBenchmark:
 
 
 class ComprehensiveBenchmark:
-    
+    """
+    Runs all benchmarks and produces a complete report.
+    """
     
     def __init__(self):
         self.results = {}
@@ -362,7 +386,8 @@ class ComprehensiveBenchmark:
         return self.results
     
     def print_report(self):
-         print("\n" + "=" * 60)
+        """Print comprehensive benchmark report."""
+        print("\n" + "=" * 60)
         print("BENCHMARK REPORT")
         print("=" * 60)
         

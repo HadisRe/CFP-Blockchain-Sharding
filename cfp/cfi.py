@@ -1,21 +1,39 @@
 """
 Consensus Friction Index (CFI) module for CFP simulation.
 Measures voting diversity to detect predictable behavior.
+
+Based on paper equation (15):
+CFI(T) = 1 - (1/n) * sum((streak_v / T)^2)
+
+High CFI = diverse voting (good)
+Low CFI = predictable voting (bad, possible attack)
 """
 
 
 class ConsensusFrictionIndex:
-     
+    """
+    Calculates and monitors CFI for shards.
+    When CFI drops below threshold, increases rotation rate.
+    """
     
     def __init__(self, fluidity_manager, threshold=0.5, window=10):
+        """
+        Setup CFI monitor.
         
+        fluidity_manager: the ValidatorFluidity object to adjust
+        threshold: CFI below this triggers response
+        window: how many blocks to look at (T in paper)
+        """
         self.fluidity = fluidity_manager
         self.threshold = threshold
         self.window = window
         self.cfi_history = {}  # track CFI per shard over time
     
     def calculate_streak(self, votes):
-         
+        """
+        Find longest consecutive same votes.
+        Example: [T,T,T,F,F,T] -> streak is 3 (the three T's)
+        """
         if not votes:
             return 0
         
@@ -32,7 +50,10 @@ class ConsensusFrictionIndex:
         return max_streak
     
     def calculate_cfi(self, shard):
-        
+        """
+        Calculate CFI for a shard.
+        Uses equation (15) from paper.
+        """
         validators = shard.validators
         n = len(validators)
         
@@ -64,7 +85,10 @@ class ConsensusFrictionIndex:
         return cfi
     
     def check_shard(self, shard):
-        
+        """
+        Check CFI for a shard and respond if needed.
+        Returns CFI value and whether action was taken.
+        """
         cfi = self.calculate_cfi(shard)
         
         # record history
@@ -182,3 +206,64 @@ if __name__ == "__main__":
     print(f"\nShards with low CFI: {warnings}")
     
     print("\nCFI test complete!")
+
+
+# =====================================================================
+# Revised CFI (Eq. 16) and bounded rotation control (Eqs. 17-20, Alg. 4)
+# =====================================================================
+
+def cfi_window(vote_rows, T, m_min):
+    """
+    Eq. (16). vote_rows: dict validator_id -> list of length T with +1 (accept), -1 (reject)
+    or None (no observation). The persistent cohort contains validators authorized at every
+    height of the window with one observation at each height.
+    Returns (cfi or None, cohort size).
+    """
+    cohort = [v for v, row in vote_rows.items() if len(row) == T and all(x is not None for x in row)]
+    m = len(cohort)
+    if m < m_min or m == 0:
+        return None, m
+    acc = 0.0
+    for v in cohort:
+        row = vote_rows[v]
+        best = cur = 1
+        for h in range(1, T):
+            cur = cur + 1 if row[h] == row[h - 1] else 1
+            best = max(best, cur)
+        acc += (best / T) ** 2
+    return 1.0 - acc / m, m
+
+
+class BoundedRotationController:
+    """
+    Alg. 4: per-shard authorized count r_i in [r_min, r_max] (Eq. 19), changed by at most one
+    per completed window (Eq. 20). A_ij = E or (J and D and L) (Eq. 17); decrease after w quiet
+    windows (Eq. 18).
+    """
+
+    def __init__(self, fluidity, n, r_min, B_rot, T=10, m_min=5, tau=0.5, w=3):
+        self.fluidity = fluidity
+        s = len(fluidity.standby)
+        self.r_min, self.r_max = r_min, min(n - 1, s, B_rot)
+        assert 1 <= self.r_min <= self.r_max
+        self.T, self.m_min, self.tau, self.w = T, m_min, tau, w
+        self.quiet = {}
+        self.records = []
+        for sid in fluidity.network.shards:
+            fluidity.shard_count[sid] = r_min
+
+    def close_window(self, sid, vote_rows, E, J, D):
+        cfi, m = cfi_window(vote_rows, self.T, self.m_min)
+        L = cfi is not None and cfi < self.tau
+        A = E or (J and D and L)
+        G = J and not E and not D
+        q = min(self.w, self.quiet.get(sid, 0) + 1) if G else 0
+        self.quiet[sid] = q
+        r = self.fluidity.shard_count[sid]
+        if A:
+            r = min(self.r_max, r + 1)
+        elif q == self.w:
+            r = max(self.r_min, r - 1)
+        self.fluidity.shard_count[sid] = r
+        self.records.append(dict(shard=sid, cfi=cfi, cohort=m, E=E, J=J, D=D, L=L, A=A, r=r))
+        return r
