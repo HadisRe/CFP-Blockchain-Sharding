@@ -15,37 +15,67 @@ from ecdsa import SigningKey, VerifyingKey, SECP256k1, BadSignatureError
 
 
 class Validator:
-   
+    """
+    A validator node that participates in block validation and consensus.
+
+    Has real cryptographic keys for:
+    - Signing votes and messages
+    - VRF (Verifiable Random Function) for random selection
+    """
 
     def __init__(self, validator_id=None):
-        
+        """
+        Create a new validator with cryptographic keys.
+        """
         if validator_id is None:
             validator_id = str(uuid.uuid4())[:8]
 
         self.validator_id = validator_id
 
-        # Generate real ECDSA key pair
-        self.private_key = SigningKey.generate(curve=SECP256k1)
-        self.public_key = self.private_key.get_verifying_key()
+        # Real ECDSA key pair, generated lazily on first use (signing, VRF, verification).
+        # Large statistical runs never touch the keys, so creating thousands of validators stays cheap.
+        self._private_key = None
+        self._public_key = None
 
         self.is_adversarial = False
         self.vote_history = []
         self.current_shard = None
 
+    @property
+    def private_key(self):
+        if self._private_key is None:
+            self._private_key = SigningKey.generate(curve=SECP256k1)
+            self._public_key = self._private_key.get_verifying_key()
+        return self._private_key
+
+    @property
+    def public_key(self):
+        if self._public_key is None:
+            _ = self.private_key
+        return self._public_key
+
     def get_public_key_bytes(self):
-         return self.public_key.to_string()
+        """Get public key as bytes for hashing."""
+        return self.public_key.to_string()
 
     def get_public_key_hex(self):
-         return self.public_key.to_string().hex()[:32]
+        """Get public key as hex string."""
+        return self.public_key.to_string().hex()[:32]
 
     def sign(self, message):
-        
+        """
+        Sign a message with private key (deterministic).
+        Returns signature bytes.
+        """
         if isinstance(message, str):
             message = message.encode()
         return self.private_key.sign_deterministic(message, hashfunc=hashlib.sha256)
 
     def verify_signature(self, message, signature, public_key=None):
-       
+        """
+        Verify a signature.
+        If public_key is None, uses self.public_key.
+        """
         if public_key is None:
             public_key = self.public_key
 
@@ -59,7 +89,15 @@ class Validator:
             return False
 
     def vrf_generate(self, input_data):
-       
+        """
+        Generate VRF output.
+
+        VRF takes input and produces:
+        - random_value: deterministic but unpredictable number
+        - proof: signature that proves the output is correct
+
+        Uses deterministic ECDSA (RFC6979) so same input always gives same output.
+        """
         if isinstance(input_data, str):
             input_data = input_data.encode()
 
@@ -84,7 +122,13 @@ class Validator:
         }
 
     def vrf_verify(self, input_data, vrf_output, public_key=None):
-        
+        """
+        Verify a VRF output.
+
+        Anyone with the public key can verify that:
+        1. The proof is a valid signature of the input
+        2. The random value matches the proof
+        """
         if public_key is None:
             public_key = self.public_key
 
@@ -114,7 +158,10 @@ class Validator:
         return True
 
     def cast_vote(self, block_hash, vote):
-       
+        """
+        Record a vote for a block.
+        vote: True for yes, False for no
+        """
         self.vote_history.append({
             "block": block_hash[:8] if len(block_hash) > 8 else block_hash,
             "vote": vote
@@ -138,7 +185,10 @@ class Validator:
 
 
 class ValidatorPool:
-    
+    """
+    Global pool of all validators in the network.
+    Used for selecting validators for shards and rotation.
+    """
 
     def __init__(self, total_validators):
         """Create a pool with specified number of validators."""
@@ -150,22 +200,29 @@ class ValidatorPool:
             self.validators.append(v)
 
     def get_validator_by_id(self, validator_id):
-         for v in self.validators:
+        """Find validator by ID."""
+        for v in self.validators:
             if v.validator_id == validator_id:
                 return v
         return None
 
     def get_available(self):
-         return [v for v in self.validators if v.validator_id not in self.assigned]
+        """Get validators not currently assigned to any shard."""
+        return [v for v in self.validators if v.validator_id not in self.assigned]
 
     def mark_assigned(self, validator):
-         self.assigned.add(validator.validator_id)
+        """Mark a validator as assigned to a shard."""
+        self.assigned.add(validator.validator_id)
 
     def mark_unassigned(self, validator):
-         self.assigned.discard(validator.validator_id)
+        """Mark a validator as available again."""
+        self.assigned.discard(validator.validator_id)
 
     def get_random_validators(self, count, exclude=None):
-        
+        """
+        Get random validators from the pool.
+        exclude: list of validators to skip
+        """
         if exclude is None:
             exclude = []
 
@@ -178,7 +235,9 @@ class ValidatorPool:
         return random.sample(available, count)
 
     def set_adversarial_fraction(self, fraction):
-       
+        """
+        Mark a fraction of validators as adversarial.
+        """
         # First reset all
         for v in self.validators:
             v.is_adversarial = False
@@ -192,7 +251,8 @@ class ValidatorPool:
         return adversarial
 
     def get_adversarial_count(self):
-         return sum(1 for v in self.validators if v.is_adversarial)
+        """Count how many validators are adversarial."""
+        return sum(1 for v in self.validators if v.is_adversarial)
 
     def __len__(self):
         return len(self.validators)

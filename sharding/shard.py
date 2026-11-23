@@ -9,10 +9,17 @@ from core.transaction import Transaction
 
 
 class Shard:
-   
+    """
+    A shard is a partition of the network with its own blockchain.
+    Each shard has a committee of validators that process transactions.
+    """
     
     def __init__(self, shard_id, validators=None):
-         
+        """
+        Create new shard.
+        shard_id: unique identifier for this shard
+        validators: initial list of validators for this shard
+        """
         self.shard_id = shard_id
         self.blockchain = Blockchain(chain_id=f"shard_{shard_id}")
         self.validators = validators if validators else []
@@ -24,29 +31,39 @@ class Shard:
             v.current_shard = self.shard_id
     
     def add_validator(self, validator):
-         if validator not in self.validators:
+        """Add a validator to this shard's committee."""
+        if validator not in self.validators:
             self.validators.append(validator)
             validator.current_shard = self.shard_id
     
     def remove_validator(self, validator):
-         if validator in self.validators:
+        """Remove a validator from this shard."""
+        if validator in self.validators:
             self.validators.remove(validator)
             validator.current_shard = None
     
     def get_validator_count(self):
-         return len(self.validators)
+        """Return number of validators in this shard."""
+        return len(self.validators)
     
     def add_account(self, account_id):
-         self.accounts.add(account_id)
+        """Assign an account to this shard."""
+        self.accounts.add(account_id)
     
     def has_account(self, account_id):
-         return account_id in self.accounts
+        """Check if account belongs to this shard."""
+        return account_id in self.accounts
     
     def submit_transaction(self, tx):
-         self.pending_txs.append(tx)
+        """Add transaction to pending pool."""
+        self.pending_txs.append(tx)
     
     def process_block(self):
-         
+        """
+        Create a new block from pending transactions.
+        In real system, this would involve consensus voting.
+        Returns the new block or None if no transactions.
+        """
         if not self.pending_txs:
             return None
         
@@ -59,16 +76,21 @@ class Shard:
         return block
     
     def get_chain_height(self):
-         return self.blockchain.get_chain_length()
+        """Get current blockchain height."""
+        return self.blockchain.get_chain_length()
     
     def get_adversarial_fraction(self):
-         if not self.validators:
+        """Calculate fraction of adversarial validators in this shard."""
+        if not self.validators:
             return 0
         adv_count = sum(1 for v in self.validators if v.is_adversarial)
         return adv_count / len(self.validators)
     
     def get_state_snapshot(self, height=None):
-        
+        """
+        Get a snapshot of shard state at given height.
+        Used for cross-shard transactions (from paper section 3.1).
+        """
         if height is None:
             height = self.get_chain_height() - 1
         
